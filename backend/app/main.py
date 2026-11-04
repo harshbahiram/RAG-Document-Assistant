@@ -1,8 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.api.documents import router as documents_router
 
 app = FastAPI(
     title="RAG Document Assistant",
     version="1.0.0")
+
+app.include_router(documents_router)
 
 @app.get("/")
 def home():
@@ -15,3 +21,17 @@ def health():
     return {
         "status": "healthy"
     }
+
+@app.get("/health/db")
+def database_health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {
+            "status": "connected",
+            "database": "Supabase PostgreSQL"
+        }
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Database connection failed"
+        )
