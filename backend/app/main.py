@@ -2,10 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.api.documents import router as documents_router
 
 app = FastAPI(
     title="RAG Document Assistant",
     version="1.0.0")
+
+app.include_router(documents_router)
 
 @app.get("/")
 def home():
