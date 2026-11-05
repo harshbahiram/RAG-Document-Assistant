@@ -6,10 +6,12 @@ from fastapi import (
     HTTPException
 )
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.db.database import get_db
 from app.services.document_service import create_document
-from app.schemas.document import DocumentResponse
+from app.schemas.document import DocumentResponse, ExtractDocumentResponse
+from app.services.document_processing_service import extract_document
 
 
 router = APIRouter(
@@ -76,4 +78,42 @@ async def upload_document(
         raise HTTPException(
             status_code=500,
             detail="Failed to upload document"
+        )
+
+@router.post(
+    "/{document_id}/extract",
+    response_model=ExtractDocumentResponse
+)
+def extract_document_endpoint(
+    document_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = extract_document(db, document_id)
+
+        # Return a small preview, not the entire document
+        preview = [
+            {
+                "page_number": page["page_number"],
+                "character_count": len(page["text"]),
+                "text_preview": page["text"][:300]
+            }
+            for page in result["pages"]
+        ]
+
+        return {
+            "document_id": result["document_id"],
+            "filename": result["filename"],
+            "page_count": result["page_count"],
+            "total_characters": result["total_characters"],
+            "preview": preview
+        }
+
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Document extraction failed"
         )

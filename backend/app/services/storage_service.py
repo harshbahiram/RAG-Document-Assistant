@@ -20,6 +20,17 @@ def upload_pdf(file_path: str, file_content: bytes):
 
     return response
 
+def download_pdf(file_path: str):
+    """
+    Download a PDF from Supabase Storage.
+    """
+
+    response = supabase.storage.from_(
+        SUPABASE_BUCKET_NAME
+    ).download(file_path)
+
+    return response
+
 
 def delete_pdf(file_path: str):
     """
