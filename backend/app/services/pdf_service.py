@@ -1,4 +1,4 @@
-import fitz
+import pymupdf
 
 
 def extract_pdf_text(pdf_content: bytes):
@@ -8,7 +8,7 @@ def extract_pdf_text(pdf_content: bytes):
 
     extracted_pages = []
 
-    with fitz.open(
+    with pymupdf.open(
         stream=pdf_content,
         filetype="pdf"
     ) as pdf:
