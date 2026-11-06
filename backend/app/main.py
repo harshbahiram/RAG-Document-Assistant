@@ -3,12 +3,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.api.documents import router as documents_router
+from app.api.chat import router as chat_router
 
 app = FastAPI(
     title="RAG Document Assistant",
     version="1.0.0")
 
 app.include_router(documents_router)
+app.include_router(chat_router)
 
 @app.get("/")
 def home():
