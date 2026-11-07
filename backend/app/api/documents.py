@@ -12,6 +12,8 @@ from app.db.database import get_db
 from app.services.document_service import create_document
 from app.schemas.document import DocumentResponse, ExtractDocumentResponse
 from app.services.document_processing_service import extract_document
+from app.services.document_service import (create_document, get_all_documents, remove_document)
+from app.services.document_processing_service import (extract_document, process_document)
 
 
 router = APIRouter(
@@ -21,44 +23,43 @@ router = APIRouter(
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
+@router.get("/", response_model=list[DocumentResponse])
+def list_documents(db: Session = Depends(get_db)):
+    return get_all_documents(db)
+
 
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # Validate filename
+
     if not file.filename:
         raise HTTPException(
             status_code=400,
             detail="Filename is required"
         )
 
-    # Validate PDF extension
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400,
             detail="Only PDF files are allowed"
         )
 
-    # Read uploaded file
     file_content = await file.read()
 
-    # Validate empty file
     if not file_content:
         raise HTTPException(
             status_code=400,
             detail="Uploaded file is empty"
         )
 
-    # Validate file size
     if len(file_content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
             detail="File size exceeds 20 MB limit"
         )
 
-    # Validate actual PDF signature
     if not file_content.startswith(b"%PDF-"):
         raise HTTPException(
             status_code=400,
@@ -91,7 +92,6 @@ def extract_document_endpoint(
     try:
         result = extract_document(db, document_id)
 
-        # Return a small preview, not the entire document
         preview = [
             {
                 "page_number": page["page_number"],
@@ -116,4 +116,44 @@ def extract_document_endpoint(
         raise HTTPException(
             status_code=500,
             detail="Document extraction failed"
+        )
+
+@router.post("/{document_id}/process")
+def process_document_endpoint(
+    document_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        return process_document(db, document_id)
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Document processing failed"
+        )
+
+@router.delete("/{document_id}")
+def delete_document_endpoint(
+    document_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        return remove_document(db, document_id)
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Document deletion failed"
         )
