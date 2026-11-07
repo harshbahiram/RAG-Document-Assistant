@@ -14,14 +14,11 @@ def create_document(
 ):
     document_id = uuid.uuid4()
 
-    # Generate a unique storage path
     storage_path = f"{document_id}.pdf"
 
-    # Upload PDF to Supabase Storage
     upload_pdf(storage_path, file_content)
 
     try:
-        # Create document metadata
         document = Document(
             id=document_id,
             filename=filename,
@@ -41,10 +38,38 @@ def create_document(
     except Exception:
         db.rollback()
 
-        # Remove uploaded file if database insertion fails
         try:
             delete_pdf(storage_path)
         except Exception as cleanup_error:
             print("Storage cleanup failed:", cleanup_error)
 
+        raise
+
+def get_all_documents(db: Session):
+    return (
+        db.query(Document)
+        .order_by(Document.created_at.desc())
+        .all()
+    )
+
+
+def remove_document(db: Session, document_id: uuid.UUID):
+    document = db.get(Document, document_id)
+
+    if not document:
+        raise ValueError("Document not found")
+
+    delete_pdf(document.storage_path)
+
+    try:
+        db.delete(document)
+        db.commit()
+
+        return {
+            "message": "Document deleted successfully",
+            "document_id": str(document_id)
+        }
+
+    except Exception:
+        db.rollback()
         raise

@@ -4,10 +4,24 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.api.documents import router as documents_router
 from app.api.chat import router as chat_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="RAG Document Assistant",
     version="1.0.0")
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(documents_router)
 app.include_router(chat_router)
