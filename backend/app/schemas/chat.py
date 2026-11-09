@@ -20,7 +20,7 @@ class SourceResponse(BaseModel):
     document_id: str
     page_number: int
     chunk_id: int
-    similarity: float
+    similarity: float | None = None
 
 
 class AskQuestionResponse(BaseModel):
