@@ -6,14 +6,42 @@ import {
   User,
   FileText,
   AlertCircle,
-  MessageSquare,
   Trash2,
+  Plus,
+  Paperclip,
+  ChevronDown,
+  RotateCcw,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { askQuestion, getDocuments } from "../services/api";
+
+const suggestions = [
+  {
+    icon: FileText,
+    title: "Summarize a document",
+    question: "Summarize this document.",
+  },
+  {
+    icon: Sparkles,
+    title: "Find important details",
+    question: "What are the most important points?",
+  },
+  {
+    icon: Bot,
+    title: "Explain a topic",
+    question: "Explain the main topics in this document.",
+  },
+  {
+    icon: FileText,
+    title: "Find key conclusions",
+    question: "What are the key conclusions?",
+  },
+];
 
 function Chat() {
   const [documents, setDocuments] = useState([]);
@@ -26,8 +54,8 @@ function Chat() {
   const [failedQuestion, setFailedQuestion] = useState(null);
 
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Fetch completed documents
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
@@ -45,12 +73,13 @@ function Chat() {
     fetchDocuments();
   }, []);
 
-  // Auto-scroll to latest message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages, loading]);
 
-  // Send question to backend
   const sendQuestion = async (questionText, documentId) => {
     if (loading || !questionText.trim()) return;
 
@@ -61,14 +90,15 @@ function Chat() {
     try {
       const response = await askQuestion(questionText, documentId);
 
-      const assistantMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: response.answer,
-        sources: response.sources || [],
-      };
-
-      setMessages((previous) => [...previous, assistantMessage]);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: response.answer,
+          sources: response.sources || [],
+        },
+      ]);
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -84,7 +114,6 @@ function Chat() {
     }
   };
 
-  // Submit a new question
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -109,7 +138,11 @@ function Chat() {
     );
   };
 
-  // Retry failed question
+  const handleSuggestion = (text) => {
+    setQuestion(text);
+    inputRef.current?.focus();
+  };
+
   const handleRetry = async () => {
     if (!failedQuestion || loading) return;
 
@@ -119,7 +152,6 @@ function Chat() {
     );
   };
 
-  // Clear conversation
   const handleClearChat = () => {
     if (loading) return;
 
@@ -129,264 +161,282 @@ function Chat() {
     setFailedQuestion(null);
   };
 
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSubmit(event);
+    }
+  };
+
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      {/* Page Header */}
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Chat with Documents
-        </h1>
+    <div className="relative flex h-screen min-h-0 flex-col bg-white">
 
-        <p className="mt-1 text-sm text-slate-500">
-          Ask questions and get AI-powered answers from your PDFs.
-        </p>
-      </div>
+      {/* Minimal Header */}
+      <header className="z-10 flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-semibold tracking-tight text-slate-800">
+            Chat
+          </h1>
+        </div>
 
-      {/* Document Selection */}
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <label className="text-sm font-medium text-slate-700">
-          Select document
-        </label>
+        <div className="flex items-center gap-2">
 
-        <select
-          value={selectedDocument}
-          onChange={(event) => setSelectedDocument(event.target.value)}
-          disabled={documentsLoading || loading}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 sm:max-w-xs disabled:opacity-60"
-        >
-          <option value="">All documents</option>
+          {/* Document Selector */}
+          <div className="relative">
+            <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
-          {documents.map((document) => (
-            <option key={document.id} value={document.id}>
-              {document.filename}
-            </option>
-          ))}
-        </select>
-      </div>
+            <select
+              value={selectedDocument}
+              onChange={(event) =>
+                setSelectedDocument(event.target.value)
+              }
+              disabled={documentsLoading || loading}
+              className="max-w-[180px] appearance-none rounded-lg border border-transparent bg-slate-100 py-2 pl-9 pr-8 text-xs font-medium text-slate-700 outline-none transition hover:bg-slate-200 focus:border-slate-300 sm:max-w-[240px] sm:text-sm"
+            >
+              <option value="">All documents</option>
 
-      {/* Chat Container */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-        {/* Chat Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-blue-100 p-2">
-              <Bot className="h-5 w-5 text-blue-600" />
-            </div>
+              {documents.map((document) => (
+                <option key={document.id} value={document.id}>
+                  {document.filename}
+                </option>
+              ))}
+            </select>
 
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                DocuMind AI
-              </h2>
-
-              <p className="text-xs text-slate-500">
-                Document-powered AI assistant
-              </p>
-            </div>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           </div>
 
           <button
             onClick={handleClearChat}
             disabled={messages.length === 0 || loading}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-            title="Clear conversation"
+            title="New chat"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-30"
           >
-            <Trash2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Clear chat</span>
+            <Plus className="h-5 w-5" />
           </button>
         </div>
+      </header>
 
-        {/* Messages Area */}
-        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-6">
-          {/* Empty State */}
+      {/* Conversation Area */}
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-8 sm:px-6">
+
+          {/* Welcome Screen */}
           {messages.length === 0 && (
-            <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="mb-4 rounded-2xl bg-blue-100 p-4">
-                <MessageSquare className="h-8 w-8 text-blue-600" />
+            <div className="flex min-h-[55vh] flex-col items-center justify-center">
+
+              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <Sparkles className="h-6 w-6 text-slate-700" />
               </div>
 
-              <h3 className="font-semibold text-slate-800">
-                Start a conversation
-              </h3>
+              <h2 className="text-center text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                What can I help you understand?
+              </h2>
 
-              <p className="mt-2 max-w-sm text-sm text-slate-500">
-                Ask a question about your uploaded documents.
-                I'll retrieve relevant passages and generate an answer.
+              <p className="mt-3 max-w-md text-center text-sm leading-6 text-slate-500">
+                Ask questions about your documents and get answers
+                backed by relevant passages from your PDFs.
               </p>
-            </div>
-          )}
 
-          {/* Suggested Questions */}
-          {messages.length === 0 && documents.length > 0 && (
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {[
-                "Summarize this document",
-                "What are the main topics?",
-                "Explain the important points",
-                "What are the key conclusions?",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setQuestion(suggestion)}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
+              {documents.length > 0 ? (
+                <div className="mt-10 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+                  {suggestions.map((suggestion) => {
+                    const Icon = suggestion.icon;
 
-          {/* Chat Messages */}
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {message.role === "assistant" && (
-                <div className="h-9 w-9 shrink-0 rounded-full bg-blue-100 p-2">
-                  <Bot className="h-5 w-5 text-blue-600" />
+                    return (
+                      <button
+                        key={suggestion.title}
+                        onClick={() =>
+                          handleSuggestion(suggestion.question)
+                        }
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                      >
+                        <Icon className="h-5 w-5 shrink-0 text-slate-500" />
+
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">
+                            {suggestion.title}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Ask your documents
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+              ) : (
+                <p className="mt-8 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                  Upload and process a PDF to start chatting.
+                </p>
               )}
+            </div>
+          )}
 
-              <div
-                className={`max-w-[85%] rounded-xl p-4 text-sm leading-7 ${
-                  message.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "border border-slate-200 bg-white text-slate-800"
-                }`}
-              >
-                {/* Markdown Response */}
-                <div
-                  className={`prose prose-sm max-w-none break-words ${
-                    message.role === "user"
-                      ? "prose-p:text-white prose-strong:text-white prose-li:text-white"
-                      : "prose-headings:font-semibold prose-headings:text-slate-900 prose-p:text-slate-700 prose-li:text-slate-700 prose-strong:text-slate-900"
-                  }`}
-                >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
+          {/* Messages */}
+          <div className="space-y-8">
+            {messages.map((message) => (
+              <div key={message.id}>
 
-                {/* Source References */}
-                {message.sources?.length > 0 && (
-                  <div className="mt-4 border-t border-slate-200 pt-3">
-                    <p className="mb-2 text-xs font-semibold text-slate-500">
-                      SOURCES
-                    </p>
+                {message.role === "user" ? (
+                  <div className="flex justify-end">
+                    <div className="max-w-[85%] rounded-3xl bg-slate-100 px-5 py-3 text-sm leading-7 text-slate-800 sm:max-w-[75%]">
+                      {message.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                      <Bot className="h-4 w-4 text-slate-700" />
+                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {message.sources.map((source, index) => {
-                        const sourceDocument = documents.find(
-                          (doc) => doc.id === source.document_id
-                        );
+                    <div className="min-w-0 flex-1 pt-1">
+                      <div className="prose prose-sm max-w-none break-words leading-7 prose-headings:font-semibold prose-headings:text-slate-900 prose-p:text-slate-700 prose-li:text-slate-700 prose-strong:text-slate-900 prose-a:text-indigo-600">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
 
-                        return (
-                          <div
-                            key={`${source.chunk_id}-${index}`}
-                            className="rounded-lg border border-blue-100 bg-blue-50 p-3"
-                          >
-                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700">
-                              <FileText className="h-4 w-4" />
-                              {source.source}
-                            </div>
+                      {/* Sources */}
+                      {message.sources?.length > 0 && (
+                        <div className="mt-6 border-t border-slate-100 pt-4">
+                          <p className="mb-3 text-xs font-semibold text-slate-500">
+                            Sources
+                          </p>
 
-                            <p className="mt-1 text-xs text-slate-700">
-                              {sourceDocument?.filename || "Document"}
-                            </p>
+                          <div className="flex flex-wrap gap-2">
+                            {message.sources.map((source, index) => {
+                              const sourceDocument = documents.find(
+                                (doc) =>
+                                  doc.id === source.document_id
+                              );
 
-                            <p className="mt-1 text-xs text-slate-500">
-                              Page {source.page_number}
-                            </p>
+                              return (
+                                <div
+                                  key={`${source.chunk_id}-${index}`}
+                                  className="flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                                >
+                                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-slate-700">
+                                      {source.source}
+                                      <span className="ml-2 font-normal text-slate-400">
+                                        Page {source.page_number}
+                                      </span>
+                                    </p>
+
+                                    <p
+                                      className="max-w-52 truncate text-xs text-slate-500"
+                                      title={sourceDocument?.filename || "Document"}
+                                    >
+                                      {sourceDocument?.filename || "Document"}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
+            ))}
+          </div>
 
-              {message.role === "user" && (
-                <div className="h-9 w-9 shrink-0 rounded-full bg-slate-200 p-2">
-                  <User className="h-5 w-5 text-slate-600" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Animated Loading Indicator */}
+          {/* Loading */}
           {loading && (
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-blue-100 p-2">
-                <Bot className="h-5 w-5 text-blue-600" />
+            <div className="mt-8 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
+                <Bot className="h-4 w-4 text-slate-700" />
               </div>
 
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                <span className="text-sm text-slate-600">
-                  DocuMind is thinking
-                </span>
-
-                <div className="flex gap-1">
-                  {[0, 1, 2].map((item) => (
-                    <span
-                      key={item}
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500"
-                      style={{ animationDelay: `${item * 0.15}s` }}
-                    />
-                  ))}
-                </div>
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Thinking...
               </div>
             </div>
           )}
 
           <div ref={messagesEndRef} />
         </div>
+      </main>
 
-        {/* Error Message and Retry */}
-        {error && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-red-100 bg-red-50 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-red-700">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-
-            {failedQuestion && (
-              <button
-                onClick={handleRetry}
-                disabled={loading}
-                className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-              >
-                Retry
-              </button>
-            )}
+      {/* Error */}
+      {error && (
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 pb-3 sm:px-6">
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
           </div>
-        )}
 
-        {/* Question Input */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-3 border-t border-slate-200 bg-white p-4"
-        >
-          <input
-            type="text"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Ask something about your documents..."
-            disabled={loading}
-            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500 disabled:bg-slate-50"
-          />
+          {failedQuestion && (
+            <button
+              onClick={handleRetry}
+              disabled={loading}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
-          <button
-            type="submit"
-            disabled={loading || !question.trim()}
-            className="rounded-lg bg-blue-600 p-3 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            title="Send question"
+      {/* Bottom Composer */}
+      <footer className="shrink-0 bg-white px-4 pb-3 pt-2 sm:px-6 sm:pb-5">
+        <div className="mx-auto w-full max-w-5xl">
+
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-3xl border border-slate-300 bg-white px-3 py-2 shadow-sm transition focus-within:border-slate-400 focus-within:shadow-md"
           >
-            <Send className="h-5 w-5" />
-          </button>
-        </form>
-      </div>
+            <textarea
+              ref={inputRef}
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask anything about your documents..."
+              rows={1}
+              disabled={loading}
+              className="max-h-40 min-h-12 w-full resize-y bg-transparent px-2 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-50"
+            />
+
+            <div className="flex items-center justify-between px-1 pb-1">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.focus()}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  title="Focus message input"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+
+                <span className="hidden text-xs text-slate-400 sm:inline">
+                  {selectedDocument
+                    ? "Asking about selected document"
+                    : "Searching all documents"}
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !question.trim()}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                title="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+
+          <p className="mt-3 text-center text-[11px] text-slate-400">
+            DocuMind AI can make mistakes. Verify important information using the cited sources.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
