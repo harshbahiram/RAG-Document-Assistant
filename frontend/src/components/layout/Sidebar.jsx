@@ -26,7 +26,7 @@ function Sidebar() {
 
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold tracking-tight">
-              DocuMind AI
+              Knowvia AI
             </h1>
             <p className="truncate text-xs text-slate-400">
               RAG Document Assistant
