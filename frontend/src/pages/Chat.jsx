@@ -433,7 +433,7 @@ function Chat() {
           </form>
 
           <p className="mt-3 text-center text-[11px] text-slate-400">
-            DocuMind AI can make mistakes. Verify important information using the cited sources.
+            Knowvia AI can make mistakes. Verify important information using the cited sources.
           </p>
         </div>
       </footer>
