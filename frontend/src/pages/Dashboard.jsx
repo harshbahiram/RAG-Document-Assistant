@@ -163,8 +163,8 @@ function Dashboard() {
     <div className="mx-auto w-full max-w-7xl space-y-8 pb-10">
 
     {/* Dashboard Header */}
-    <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-      <div className="p-4">
+    <section className="p-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <div>
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
           <span className="text-xs font-semibold tracking-wide text-indigo-700">
@@ -220,7 +220,7 @@ function Dashboard() {
       )}
 
       {/* Statistics */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="p-8 pt-0 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total documents"
           value={totalDocuments}
@@ -299,7 +299,7 @@ function Dashboard() {
       </section>
 
       {/* Documents */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="p-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col justify-between gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:p-6">
           <div>
             <h2 className="text-lg font-bold text-slate-900">

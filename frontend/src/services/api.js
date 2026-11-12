@@ -1,9 +1,32 @@
+
 import axios from "axios";
+import { supabase } from "../lib/supabase";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 60000,
 });
+
+api.interceptors.request.use(
+  async (config) => {
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    const accessToken = data.session?.access_token;
+
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export const getDocuments = async () => {
   const response = await api.get("/api/documents/");
@@ -14,26 +37,40 @@ export const uploadDocument = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await api.post("/api/documents/upload", formData);
+  const response = await api.post(
+    "/api/documents/upload",
+    formData
+  );
+
   return response.data;
 };
 
 export const processDocument = async (documentId) => {
-  const response = await api.post(`/api/documents/${documentId}/process`);
+  const response = await api.post(
+    `/api/documents/${documentId}/process`
+  );
+
   return response.data;
 };
 
 export const deleteDocument = async (documentId) => {
-  const response = await api.delete(`/api/documents/${documentId}`);
+  const response = await api.delete(
+    `/api/documents/${documentId}`
+  );
+
   return response.data;
 };
 
-export const askQuestion = async (question, documentId = null) => {
+export const askQuestion = async (
+  question,
+  documentId = null
+) => {
   const response = await api.post("/api/chat/ask", {
     question,
     document_id: documentId,
     match_count: 5,
   });
+
   return response.data;
 };
 

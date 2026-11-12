@@ -29,7 +29,7 @@ def select_context_chunks(chunks):
 
     semantic_chunks.sort(
         key=lambda chunk: chunk["similarity"],
-        reverse=True
+        reverse=True,
     )
 
     selected = {}
@@ -42,14 +42,17 @@ def select_context_chunks(chunks):
         related_chunks = [
             chunk_map.get((document_id, chunk_index)),
             chunk_map.get((document_id, chunk_index - 1)),
-            chunk_map.get((document_id, chunk_index + 1))
+            chunk_map.get((document_id, chunk_index + 1)),
         ]
 
         for chunk in related_chunks:
             if chunk is None:
                 continue
 
-            key = (chunk["document_id"], chunk["chunk_index"])
+            key = (
+                chunk["document_id"],
+                chunk["chunk_index"],
+            )
 
             if key in selected:
                 continue
@@ -66,16 +69,17 @@ def select_context_chunks(chunks):
         selected.values(),
         key=lambda chunk: (
             chunk["document_id"],
-            chunk["chunk_index"]
-        )
+            chunk["chunk_index"],
+        ),
     )
 
 
 def answer_question(
     db: Session,
     question: str,
+    user_id: UUID,
     match_count: int = 10,
-    document_id: UUID | None = None
+    document_id: UUID | None = None,
 ):
     if not question or not question.strip():
         raise ValueError("Question cannot be empty.")
@@ -83,8 +87,9 @@ def answer_question(
     chunks = retrieve_relevant_chunks(
         db=db,
         question=question,
+        user_id=user_id,
         match_count=match_count,
-        document_id=document_id
+        document_id=document_id,
     )
 
     if not chunks:
@@ -94,7 +99,7 @@ def answer_question(
                 "I couldn't find relevant information "
                 "in the uploaded documents."
             ),
-            "sources": []
+            "sources": [],
         }
 
     selected_chunks = select_context_chunks(chunks)
@@ -106,7 +111,7 @@ def answer_question(
                 "I couldn't find sufficient relevant information "
                 "to answer this question."
             ),
-            "sources": []
+            "sources": [],
         }
 
     context_parts = []
@@ -125,7 +130,7 @@ def answer_question(
             "document_id": chunk["document_id"],
             "page_number": chunk["page_number"],
             "chunk_id": chunk["chunk_id"],
-            "similarity": chunk["similarity"]
+            "similarity": chunk["similarity"],
         })
 
     context = "\n\n".join(context_parts)
@@ -148,11 +153,10 @@ ANSWERING RULES:
 3. Do not invent, assume, or guess missing information.
 4. Give a complete and sufficiently detailed answer.
 5. Include relevant names, events, explanations, and details
-   when they are supported by the context.
-6. For questions asking who, what, when, where, or why,
-   answer directly before providing additional explanation.
-7. If multiple passages provide related information,
-   combine them into one coherent answer.
+   when supported by the context.
+6. For who, what, when, where, or why questions,
+   answer directly before additional explanation.
+7. Combine related passages into one coherent answer.
 8. If the document does not establish an answer, clearly
    state what is known and what is not established.
 9. Cite factual claims using the supplied source labels.
@@ -174,11 +178,13 @@ Provide the answer now:
     answer = generate_response(prompt)
 
     if not answer or not answer.strip():
-        raise RuntimeError("The AI model returned an empty answer.")
+        raise RuntimeError(
+            "The AI model returned an empty answer."
+        )
 
     citation_groups = re.findall(
         r"\[(S\d+(?:\s*,\s*S\d+)*)\]",
-        answer
+        answer,
     )
 
     cited_labels = []
@@ -214,5 +220,5 @@ Provide the answer now:
     return {
         "question": question,
         "answer": answer.strip(),
-        "sources": cited_sources
+        "sources": cited_sources,
     }

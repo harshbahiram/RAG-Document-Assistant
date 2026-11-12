@@ -1,3 +1,4 @@
+
 import uuid
 
 from sqlalchemy import (
@@ -9,7 +10,7 @@ from sqlalchemy import (
     Integer,
     Text,
     UniqueConstraint,
-    text
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column
@@ -29,20 +30,32 @@ class Document(Base):
         server_default=text("gen_random_uuid()")
     )
 
+    user_id = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True
+    )
+
     filename = mapped_column(Text, nullable=False)
+
     storage_bucket = mapped_column(
         Text, nullable=False, server_default=text("'documents'")
     )
-    storage_path = mapped_column(Text, nullable=False, unique=True)
+
+    storage_path = mapped_column(
+        Text, nullable=False, unique=True
+    )
 
     mime_type = mapped_column(
         Text, nullable=False, server_default=text("'application/pdf'")
     )
+
     file_size = mapped_column(BigInteger, nullable=False)
 
     status = mapped_column(
         Text, nullable=False, server_default=text("'processing'")
     )
+
     error_message = mapped_column(Text, nullable=True)
 
     created_at = mapped_column(
@@ -50,6 +63,7 @@ class Document(Base):
         nullable=False,
         server_default=text("NOW()")
     )
+
     updated_at = mapped_column(
         DateTime(timezone=True),
         nullable=False,
