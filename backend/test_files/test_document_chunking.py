@@ -33,7 +33,6 @@ def main():
             print("Token count:", chunk["token_count"])
             print("Content:", chunk["content"][:300])
 
-        # Basic validation
         assert all(c["token_count"] <= 180 for c in chunks)
         assert [c["chunk_index"] for c in chunks] == list(range(len(chunks)))
 

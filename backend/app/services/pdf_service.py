@@ -7,9 +7,6 @@ MAX_EXTRACTED_CHARS = 5_000_000
 
 
 def extract_pdf_text(pdf_content: bytes):
-    """
-    Extract text from a PDF page by page with basic resource limits.
-    """
 
     if not pdf_content:
         raise ValueError("PDF file is empty.")

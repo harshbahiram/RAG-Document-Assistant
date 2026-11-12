@@ -5,7 +5,6 @@ from transformers import AutoTokenizer
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-# Leave room for special tokens added by the embedding model.
 CHUNK_SIZE = 180
 CHUNK_OVERLAP = 30
 
