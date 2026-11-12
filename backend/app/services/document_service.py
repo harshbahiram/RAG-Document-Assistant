@@ -1,5 +1,6 @@
 
 import uuid
+
 from sqlalchemy.orm import Session
 
 from app.db.models import Document
@@ -10,10 +11,10 @@ from app.core.config import SUPABASE_BUCKET_NAME
 def create_document(
     db: Session,
     filename: str,
-    file_content: bytes
+    file_content: bytes,
+    user_id: uuid.UUID,
 ):
     document_id = uuid.uuid4()
-
     storage_path = f"{document_id}.pdf"
 
     upload_pdf(storage_path, file_content)
@@ -21,12 +22,13 @@ def create_document(
     try:
         document = Document(
             id=document_id,
+            user_id=user_id,
             filename=filename,
             storage_bucket=SUPABASE_BUCKET_NAME,
             storage_path=storage_path,
             mime_type="application/pdf",
             file_size=len(file_content),
-            status="processing"
+            status="processing",
         )
 
         db.add(document)
@@ -45,29 +47,45 @@ def create_document(
 
         raise
 
-def get_all_documents(db: Session):
+
+def get_all_documents(
+    db: Session,
+    user_id: uuid.UUID,
+):
     return (
         db.query(Document)
+        .filter(Document.user_id == user_id)
         .order_by(Document.created_at.desc())
         .all()
     )
 
 
-def remove_document(db: Session, document_id: uuid.UUID):
-    document = db.get(Document, document_id)
+def remove_document(
+    db: Session,
+    document_id: uuid.UUID,
+    user_id: uuid.UUID,
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user_id,
+        )
+        .first()
+    )
 
     if not document:
         raise ValueError("Document not found")
 
-    delete_pdf(document.storage_path)
-
     try:
+        delete_pdf(document.storage_path)
+
         db.delete(document)
         db.commit()
 
         return {
             "message": "Document deleted successfully",
-            "document_id": str(document_id)
+            "document_id": str(document_id),
         }
 
     except Exception:

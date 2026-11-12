@@ -3,10 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   Send,
   Bot,
-  User,
   FileText,
   AlertCircle,
-  Trash2,
   Plus,
   Paperclip,
   ChevronDown,

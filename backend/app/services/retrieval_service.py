@@ -4,14 +4,16 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.db.models import Document
 from app.services.embedding_service import generate_embeddings
 
 
 def retrieve_relevant_chunks(
     db: Session,
     question: str,
+    user_id: UUID,
     match_count: int = 10,
-    document_id: UUID | None = None
+    document_id: UUID | None = None,
 ):
     if not question or not question.strip():
         raise ValueError("Question cannot be empty.")
@@ -19,7 +21,22 @@ def retrieve_relevant_chunks(
     if match_count <= 0:
         raise ValueError("match_count must be greater than zero.")
 
-    query_embedding = generate_embeddings([question.strip()])[0]
+    if document_id is not None:
+        owned_document = (
+            db.query(Document.id)
+            .filter(
+                Document.id == document_id,
+                Document.user_id == user_id,
+            )
+            .first()
+        )
+
+        if not owned_document:
+            raise ValueError("Document not found.")
+
+    query_embedding = generate_embeddings(
+        [question.strip()]
+    )[0]
 
     embedding_string = "[" + ",".join(
         str(value) for value in query_embedding
@@ -27,12 +44,16 @@ def retrieve_relevant_chunks(
 
     sql = text("""
         WITH semantic_matches AS (
-            SELECT *
+            SELECT matched.*
             FROM public.match_document_chunks(
                 CAST(:query_embedding AS extensions.vector(384)),
+                CAST(:user_id AS UUID),
                 :match_count,
                 CAST(:filter_document_id AS UUID)
-            )
+            ) AS matched
+            INNER JOIN public.documents AS owned_document
+                ON owned_document.id = matched.document_id
+            WHERE owned_document.user_id = CAST(:user_id AS UUID)
         ),
         expanded_chunks AS (
             SELECT
@@ -43,13 +64,13 @@ def retrieve_relevant_chunks(
                 neighbour.chunk_index,
                 MAX(direct.similarity) AS similarity
             FROM semantic_matches AS matched
-            JOIN public.document_chunks AS neighbour
-              ON neighbour.document_id = matched.document_id
-             AND neighbour.chunk_index BETWEEN
-                 matched.chunk_index - 1
-                 AND matched.chunk_index + 1
+            INNER JOIN public.document_chunks AS neighbour
+                ON neighbour.document_id = matched.document_id
+                AND neighbour.chunk_index BETWEEN
+                    matched.chunk_index - 1
+                    AND matched.chunk_index + 1
             LEFT JOIN semantic_matches AS direct
-              ON direct.id = neighbour.id
+                ON direct.id = neighbour.id
             GROUP BY
                 neighbour.id,
                 neighbour.document_id,
@@ -69,8 +90,9 @@ def retrieve_relevant_chunks(
             "match_count": match_count,
             "filter_document_id": (
                 str(document_id) if document_id else None
-            )
-        }
+            ),
+            "user_id": str(user_id),
+        },
     ).mappings().all()
 
     return [
@@ -84,7 +106,7 @@ def retrieve_relevant_chunks(
                 float(row["similarity"])
                 if row["similarity"] is not None
                 else None
-            )
+            ),
         }
         for row in results
     ]

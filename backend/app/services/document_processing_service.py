@@ -1,4 +1,6 @@
+
 from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.db.models import Document
@@ -9,12 +11,36 @@ from app.services.embedding_service import generate_embeddings
 from app.services.chunk_storage_service import save_document_chunks
 
 
-def extract_document(db: Session, document_id: UUID):
-    
-    document = db.get(Document, document_id)
+def get_user_document(
+    db: Session,
+    document_id: UUID,
+    user_id: UUID,
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user_id,
+        )
+        .first()
+    )
 
     if not document:
-        raise ValueError("Document not found")
+        raise ValueError("Document not found.")
+
+    return document
+
+
+def extract_document(
+    db: Session,
+    document_id: UUID,
+    user_id: UUID,
+):
+    document = get_user_document(
+        db,
+        document_id,
+        user_id,
+    )
 
     pdf_content = download_pdf(document.storage_path)
 
@@ -34,38 +60,57 @@ def extract_document(db: Session, document_id: UUID):
         "filename": document.filename,
         "page_count": len(extracted_pages),
         "total_characters": total_characters,
-        "pages": extracted_pages
+        "pages": extracted_pages,
     }
 
 
-def process_document(db: Session, document_id: UUID):
-
-    document = db.get(Document, document_id)
-
-    if not document:
-        raise ValueError("Document not found")
+def process_document(
+    db: Session,
+    document_id: UUID,
+    user_id: UUID,
+):
+    document = get_user_document(
+        db,
+        document_id,
+        user_id,
+    )
 
     try:
         document.status = "processing"
         document.error_message = None
         db.commit()
 
-        extracted = extract_document(db, document_id)
+        extracted = extract_document(
+            db,
+            document_id,
+            user_id,
+        )
 
-        chunks = chunk_document_pages(extracted["pages"])
+        chunks = chunk_document_pages(
+            extracted["pages"]
+        )
 
         if not chunks:
             raise ValueError("No text chunks generated.")
 
-        texts = [chunk["content"] for chunk in chunks]
+        texts = [
+            chunk["content"]
+            for chunk in chunks
+        ]
+
         embeddings = generate_embeddings(texts)
 
         saved_count = save_document_chunks(
-            db,
-            document_id,
-            chunks,
-            embeddings
+            db=db,
+            document_id=document_id,
+            user_id=user_id,
+            chunks=chunks,
+            embeddings=embeddings,
         )
+
+        document.status = "completed"
+        document.error_message = None
+        db.commit()
 
         return {
             "document_id": str(document_id),
@@ -73,19 +118,29 @@ def process_document(db: Session, document_id: UUID):
             "page_count": extracted["page_count"],
             "total_characters": extracted["total_characters"],
             "total_chunks": saved_count,
-            "status": "completed"
+            "status": "completed",
         }
 
     except Exception as error:
         db.rollback()
 
         try:
-            failed_document = db.get(Document, document_id)
+            failed_document = get_user_document(
+                db,
+                document_id,
+                user_id,
+            )
 
-            if failed_document:
-                failed_document.status = "failed"
-                failed_document.error_message = str(error)[:2000]
-                db.commit()
+            failed_document.status = "failed"
+
+            if isinstance(error, ValueError):
+                failed_document.error_message = str(error)[:500]
+            else:
+                failed_document.error_message = (
+                    "Document processing failed. Please try again."
+                )
+
+            db.commit()
 
         except Exception:
             db.rollback()

@@ -1,4 +1,6 @@
 
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.db.models import Document, DocumentChunk
@@ -6,9 +8,10 @@ from app.db.models import Document, DocumentChunk
 
 def save_document_chunks(
     db: Session,
-    document_id,
+    document_id: UUID,
+    user_id: UUID,
     chunks: list[dict],
-    embeddings: list[list[float]]
+    embeddings: list[list[float]],
 ):
     if len(chunks) != len(embeddings):
         raise ValueError(
@@ -24,13 +27,19 @@ def save_document_chunks(
                 "Each embedding must contain exactly 384 dimensions."
             )
 
-    document = db.get(Document, document_id)
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user_id,
+        )
+        .first()
+    )
 
     if not document:
         raise ValueError("Document not found.")
 
     try:
-        # Remove existing chunks inside the same transaction.
         db.query(DocumentChunk).filter(
             DocumentChunk.document_id == document_id
         ).delete(synchronize_session=False)
@@ -41,14 +50,13 @@ def save_document_chunks(
                 content=chunk["content"],
                 page_number=chunk["page_number"],
                 chunk_index=chunk["chunk_index"],
-                embedding=embedding
+                embedding=embedding,
             )
             for chunk, embedding in zip(chunks, embeddings)
         ]
 
         db.add_all(records)
 
-        # Update status in the same transaction.
         document.status = "completed"
         document.error_message = None
 
