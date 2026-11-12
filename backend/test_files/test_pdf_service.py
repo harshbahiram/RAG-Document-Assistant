@@ -2,7 +2,6 @@ from pathlib import Path
 
 from app.services.pdf_service import extract_pdf_text
 
-# Place a test PDF inside backend/test_files/
 pdf_path = Path("test_files/sample.pdf")
 
 if not pdf_path.exists():

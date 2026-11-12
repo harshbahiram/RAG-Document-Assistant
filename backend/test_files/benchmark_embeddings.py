@@ -5,10 +5,8 @@ texts = [
     "This is a sample document for testing embedding performance."
 ] * 100
 
-# First run: model loading and initialization
 generate_embeddings(texts)
 
-# Second run: actual inference after model is loaded
 start = time.perf_counter()
 
 embeddings = generate_embeddings(texts)
