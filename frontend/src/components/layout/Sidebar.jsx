@@ -5,12 +5,12 @@ import {
   LayoutDashboard,
   MessageSquare,
   FileText,
-  Brain,
   LogOut,
 } from "lucide-react";
 
 import { signOut } from "../../services/auth";
 import { useAuth } from "../../context/AuthContext";
+import logo from "../../../public/favicon.ico";
 
 const navigation = [
   {
@@ -53,7 +53,8 @@ function Sidebar() {
       <div className="border-b border-white/5 px-5 py-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/25 ring-1 ring-inset ring-white/15">
-            <Brain size={22} aria-hidden="true" />
+            {/* <Brain size={22} aria-hidden="true" /> */}
+            <img src={ logo } alt="logo" />    
           </div>
 
           <div className="min-w-0">
