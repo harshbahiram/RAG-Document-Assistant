@@ -19,3 +19,5 @@ dist/
 # Temporary files
 uploads/
 *.log
+
+.github
